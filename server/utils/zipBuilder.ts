@@ -30,7 +30,7 @@ interface ZipEntry {
 function collectFiles(rootDir: string, currentDir: string, excluded: Set<string>, entries: ZipEntry[]) {
   const items = fs.readdirSync(currentDir, { withFileTypes: true });
   for (const item of items) {
-    if (excluded.has(item.name)) continue;
+    if (excluded.has(item.name) || item.name.startsWith('WhatsApp_Image_')) continue;
     const fullPath = path.join(currentDir, item.name);
     const relPath = path.relative(rootDir, fullPath).split(path.sep).join('/');
     if (item.isDirectory()) {

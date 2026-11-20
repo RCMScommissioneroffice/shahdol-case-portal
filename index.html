@@ -3,19 +3,97 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shahdol Division – Court &amp; Patwari Case Reporting System</title>
-    <meta name="description" content="Official online Court–Patwari case reporting, village mapping, verification, and response portal for Shahdol Division (Shahdol, Umaria, Anuppur)." />
-    <meta property="og:title" content="Shahdol Division – Court & Patwari Case Reporting System" />
+    <title>RCMS Shahdol Division – Court &amp; Patwari Case Reporting System</title>
+    <meta name="description" content="Official RCMS Shahdol Division online Court–Patwari case reporting, village mapping, verification, and response portal (Shahdol, Umaria, Anuppur)." />
+    <meta property="og:title" content="RCMS Shahdol Division – Court & Patwari Case Reporting System" />
     <meta property="og:description" content="Official online Court–Patwari case reporting, village mapping, verification, and response portal for Shahdol Division." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      @keyframes rcmsBar {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(250%); }
+      }
+      .rcms-boot {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(160deg, #ffffff 0%, #f5f7fa 60%, #eef3f9 100%);
+        color: #0b1f3a;
+        font-family: "Plus Jakarta Sans", "Noto Sans Devanagari", system-ui, sans-serif;
+        padding: 24px;
+        text-align: center;
+      }
+      .rcms-boot-top {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #c27803, #0b1f3a, #047857);
+      }
+      .rcms-boot-seal {
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        border: 1px solid rgba(194, 120, 3, 0.35);
+        background: #ffffff;
+        padding: 6px;
+        margin-bottom: 18px;
+        box-shadow: 0 4px 14px rgba(11, 31, 58, 0.08);
+      }
+      .rcms-boot-seal img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+      .rcms-boot-title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 0;
+        color: #0b1f3a;
+      }
+      .rcms-boot-sub {
+        font-size: 13px;
+        font-weight: 600;
+        color: #9a5b02;
+        margin: 6px 0 18px;
+      }
+      .rcms-boot-track {
+        width: 220px;
+        height: 4px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+      }
+      .rcms-boot-fill {
+        width: 45%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #0b1f3a, #c27803);
+        animation: rcmsBar 1.2s ease-in-out infinite;
+      }
+    </style>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
-    <div id="root"></div>
+    <div id="root">
+      <div class="rcms-boot">
+        <div class="rcms-boot-top"></div>
+        <div class="rcms-boot-seal">
+          <img src="/assets/aistudio/images__1__a180929b.jpg" alt="Madhya Pradesh Emblem" />
+        </div>
+        <h1 class="rcms-boot-title">Welcome to RCMS Shahdol Division</h1>
+        <p class="rcms-boot-sub">संभाग शहडोल — राजस्व न्यायालय एवं पटवारी प्रतिवेदन प्रणाली</p>
+        <div class="rcms-boot-track"><div class="rcms-boot-fill"></div></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

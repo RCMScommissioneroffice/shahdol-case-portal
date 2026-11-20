@@ -78,8 +78,22 @@ export default function App() {
 
   if (bootstrapping) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-600">
-        Loading Shahdol Division Portal...
+      <div className="min-h-screen bg-gradient-to-br from-white via-[#FAF9F5] to-[#EEF3F9] flex flex-col items-center justify-center p-6 text-center">
+        <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C27803] via-[#0B1F3A] to-[#047857]" />
+        <div className="mb-4 h-16 w-16 rounded-xl border border-amber-200 bg-white p-1.5 shadow-sm">
+          <img
+            src="/assets/aistudio/images__1__a180929b.jpg"
+            alt="Government of Madhya Pradesh Emblem"
+            className="h-full w-full object-contain"
+          />
+        </div>
+        <h1 className="font-display text-xl font-bold text-[#0B1F3A] sm:text-2xl">
+          Welcome to RCMS Shahdol Division
+        </h1>
+        <p className="mt-1.5 text-xs font-semibold text-[#9A5B02] sm:text-sm">
+          संभाग शहडोल — राजस्व न्यायालय एवं पटवारी ऑनलाइन प्रतिवेदन प्रणाली
+        </p>
+        <p className="mt-4 text-xs text-slate-500">Verifying portal session...</p>
       </div>
     );
   }

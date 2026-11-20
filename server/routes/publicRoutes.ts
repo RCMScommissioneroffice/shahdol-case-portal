@@ -22,11 +22,12 @@ publicRoutes.get('/locations', (_req, res) => {
   const villages = db
     .prepare(
       `SELECT v.id, v.district_id, v.tehsil_id, v.village_name,
-              CASE WHEN p.id IS NOT NULL AND u.status = 'ACTIVE' THEN 1 ELSE 0 END AS has_patwari,
+              1 AS has_patwari,
               p.patwari_name AS mapped_patwari_name
        FROM villages v
-       LEFT JOIN patwaris p ON p.village_id = v.id
-       LEFT JOIN users u ON u.user_id = p.user_id
+       JOIN patwaris p ON p.village_id = v.id
+       JOIN users u ON u.user_id = p.user_id
+       WHERE u.status = 'ACTIVE'
        ORDER BY v.village_name ASC`
     )
     .all();

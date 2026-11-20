@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { initSchema, seedDemoData } from './server/db';
+import { deactivateLegacyDemoUsers, initSchema, seedDemoData } from './server/db';
 import { adminRoutes } from './server/routes/adminRoutes';
 import { courtRoutes } from './server/routes/courtRoutes';
 import { patwariRoutes } from './server/routes/patwariRoutes';
@@ -12,6 +12,7 @@ import { sharedRoutes } from './server/routes/sharedRoutes';
 async function startServer() {
   initSchema();
   seedDemoData();
+  deactivateLegacyDemoUsers();
 
   const app = express();
   const PORT = Number(process.env.PORT || 3000);

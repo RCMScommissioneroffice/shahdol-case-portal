@@ -92,6 +92,9 @@ export function AdminDashboard({
   const [adminMsg, setAdminMsg] = useState('');
   const [adminErr, setAdminErr] = useState('');
   const [exportingZip, setExportingZip] = useState(false);
+  const [resetTargetUserId, setResetTargetUserId] = useState<string | null>(null);
+  const [adminNewPassword, setAdminNewPassword] = useState('');
+  const [adminResetBusy, setAdminResetBusy] = useState(false);
 
   // Case inspection modal
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
@@ -252,6 +255,30 @@ export function AdminDashboard({
       setAdminErr(err instanceof Error ? err.message : 'Failed to download source archive.');
     } finally {
       setExportingZip(false);
+    }
+  }
+
+  async function handleAdminResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetTargetUserId) return;
+    setAdminErr('');
+    setAdminMsg('');
+    setAdminResetBusy(true);
+    try {
+      const res = await apiRequest<{ message: string }>(
+        `/api/admin/users/${encodeURIComponent(resetTargetUserId)}/reset-password`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ newPassword: adminNewPassword })
+        }
+      );
+      setAdminMsg(res.message);
+      setResetTargetUserId(null);
+      setAdminNewPassword('');
+    } catch (err) {
+      setAdminErr(err instanceof Error ? err.message : 'Password reset failed.');
+    } finally {
+      setAdminResetBusy(false);
     }
   }
 
@@ -818,17 +845,30 @@ export function AdminDashboard({
                   </td>
                   <td className="px-4 py-3 text-right">
                     {u.user_id !== user.userId && (
-                      <button
-                        type="button"
-                        onClick={() => toggleUserStatus(u.user_id, u.status)}
-                        className={`rounded px-3 py-1 text-xs font-semibold cursor-pointer ${
-                          u.status === 'ACTIVE'
-                            ? 'border border-rose-300 text-rose-700 hover:bg-rose-50'
-                            : 'bg-emerald-700 text-white hover:bg-emerald-800'
-                        }`}
-                      >
-                        {u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetTargetUserId(u.user_id);
+                            setAdminNewPassword('');
+                            setAdminErr('');
+                          }}
+                          className="rounded border border-slate-300 px-2.5 py-1 text-xs font-semibold text-[#0F2942] hover:bg-slate-50 cursor-pointer"
+                        >
+                          Reset Password
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleUserStatus(u.user_id, u.status)}
+                          className={`rounded px-3 py-1 text-xs font-semibold cursor-pointer ${
+                            u.status === 'ACTIVE'
+                              ? 'border border-rose-300 text-rose-700 hover:bg-rose-50'
+                              : 'bg-emerald-700 text-white hover:bg-emerald-800'
+                          }`}
+                        >
+                          {u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -874,6 +914,65 @@ export function AdminDashboard({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Admin Reset User Password Modal */}
+      {resetTargetUserId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <p className="font-mono text-xs text-slate-500">ADMIN PASSWORD RESET</p>
+                <h3 className="font-display text-base font-bold text-[#0F2942]">{resetTargetUserId}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetTargetUserId(null);
+                  setAdminNewPassword('');
+                }}
+                className="rounded border border-slate-200 p-1.5 text-slate-600 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleAdminResetPassword} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                  Set New Password (नया पासवर्ड) *
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Minimum 6 characters"
+                  value={adminNewPassword}
+                  onChange={(e) => setAdminNewPassword(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-[#0F2942] focus:outline-none"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetTargetUserId(null);
+                    setAdminNewPassword('');
+                  }}
+                  className="rounded-md border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adminResetBusy}
+                  className="rounded-md bg-[#0F2942] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163859] disabled:opacity-60 cursor-pointer"
+                >
+                  {adminResetBusy ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

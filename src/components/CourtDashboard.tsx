@@ -111,8 +111,7 @@ export function CourtDashboard({
     }
   }, []);
 
-  useEffect(() => {
-    loadRequests().catch(() => {});
+  const loadLocations = useCallback(() => {
     apiRequest<{ districts: DistrictItem[]; tehsils: TehsilItem[]; villages: VillageItem[] }>('/api/locations')
       .then((loc) => {
         setDistricts(loc.districts);
@@ -120,7 +119,18 @@ export function CourtDashboard({
         setVillages(loc.villages);
       })
       .catch(() => {});
-  }, [loadRequests]);
+  }, []);
+
+  useEffect(() => {
+    loadRequests().catch(() => {});
+    loadLocations();
+  }, [loadRequests, loadLocations]);
+
+  useEffect(() => {
+    if (activeTab === 'new-request') {
+      loadLocations();
+    }
+  }, [activeTab, loadLocations]);
 
   // Auto-lookup mapped Patwari when village changes
   useEffect(() => {

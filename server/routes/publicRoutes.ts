@@ -126,10 +126,24 @@ publicRoutes.post('/auth/register-court', (req, res) => {
 });
 
 publicRoutes.post('/auth/register-patwari', (req, res) => {
-  const { districtId, tehsilId, villageId, patwariName, patwariPhone, password, confirmPassword } = req.body || {};
+  const { districtId, tehsilId, villageId, villageName, patwariName, patwariPhone, password, confirmPassword } = req.body || {};
+  const cleanVillageInput = villageName ? String(villageName).trim().replace(/\s+/g, ' ') : '';
 
-  if (!districtId || !tehsilId || !villageId || !patwariName?.trim() || !patwariPhone?.trim() || !password || !confirmPassword) {
+  if (
+    !districtId ||
+    !tehsilId ||
+    (!villageId && !cleanVillageInput) ||
+    !patwariName?.trim() ||
+    !patwariPhone?.trim() ||
+    !password ||
+    !confirmPassword
+  ) {
     res.status(400).json({ error: 'All mandatory Patwari registration fields are required.' });
+    return;
+  }
+
+  if (!villageId && cleanVillageInput.length < 2) {
+    res.status(400).json({ error: 'Please enter a valid Village / Halka name (at least 2 characters).' });
     return;
   }
 
@@ -157,26 +171,43 @@ publicRoutes.post('/auth/register-patwari', (req, res) => {
     .prepare(`SELECT id, tehsil_name FROM tehsils WHERE id = ? AND district_id = ?`)
     .get(Number(tehsilId), Number(districtId)) as { id: number; tehsil_name: string } | undefined;
 
-  const village = db
-    .prepare(`SELECT id, village_name FROM villages WHERE id = ? AND tehsil_id = ? AND district_id = ?`)
-    .get(Number(villageId), Number(tehsilId), Number(districtId)) as
-    | { id: number; village_name: string }
-    | undefined;
-
-  if (!district || !tehsil || !village) {
-    res.status(400).json({ error: 'Selected District, Tehsil, and Village hierarchy is invalid.' });
+  if (!district || !tehsil) {
+    res.status(400).json({ error: 'Selected District and Tehsil hierarchy is invalid.' });
     return;
   }
 
-  const existingVillagePatwari = db
-    .prepare(`SELECT id, patwari_name FROM patwaris WHERE village_id = ?`)
-    .get(village.id) as { id: number; patwari_name: string } | undefined;
+  let village: { id: number; village_name: string } | undefined;
+  if (villageId) {
+    village = db
+      .prepare(`SELECT id, village_name FROM villages WHERE id = ? AND tehsil_id = ? AND district_id = ?`)
+      .get(Number(villageId), Number(tehsilId), Number(districtId)) as
+      | { id: number; village_name: string }
+      | undefined;
 
-  if (existingVillagePatwari) {
-    res.status(409).json({
-      error: `Duplicate Patwari registration: Village "${village.village_name}" is already assigned to Patwari ${existingVillagePatwari.patwari_name}.`
-    });
-    return;
+    if (!village) {
+      res.status(400).json({ error: 'Selected District, Tehsil, and Village hierarchy is invalid.' });
+      return;
+    }
+  } else {
+    village = db
+      .prepare(
+        `SELECT id, village_name FROM villages
+         WHERE district_id = ? AND tehsil_id = ? AND LOWER(TRIM(village_name)) = LOWER(?)`
+      )
+      .get(district.id, tehsil.id, cleanVillageInput) as { id: number; village_name: string } | undefined;
+  }
+
+  if (village) {
+    const existingVillagePatwari = db
+      .prepare(`SELECT id, patwari_name FROM patwaris WHERE village_id = ?`)
+      .get(village.id) as { id: number; patwari_name: string } | undefined;
+
+    if (existingVillagePatwari) {
+      res.status(409).json({
+        error: `Duplicate Patwari registration: Village "${village.village_name}" is already assigned to Patwari ${existingVillagePatwari.patwari_name}.`
+      });
+      return;
+    }
   }
 
   const duplicatePhone = db.prepare(`SELECT id FROM patwaris WHERE patwari_phone = ?`).get(cleanPhone);
@@ -188,10 +219,19 @@ publicRoutes.post('/auth/register-patwari', (req, res) => {
   }
 
   const cleanName = String(patwariName).trim();
+  const resolvedVillageName = village ? village.village_name : cleanVillageInput;
   const userId = generateUserId('PATWARI', district.code);
   const passwordHash = bcrypt.hashSync(String(password), 10);
 
   const tx = db.transaction(() => {
+    let targetVillageId = village?.id;
+    if (!targetVillageId) {
+      const vInsert = db
+        .prepare(`INSERT INTO villages (district_id, tehsil_id, village_name) VALUES (?, ?, ?)`)
+        .run(district.id, tehsil.id, resolvedVillageName);
+      targetVillageId = Number(vInsert.lastInsertRowid);
+    }
+
     db.prepare(
       `INSERT INTO users (user_id, role, name, phone, password_hash, status)
        VALUES (?, 'PATWARI', ?, ?, ?, 'ACTIVE')`
@@ -200,9 +240,16 @@ publicRoutes.post('/auth/register-patwari', (req, res) => {
     db.prepare(
       `INSERT INTO patwaris (user_id, district_id, tehsil_id, village_id, patwari_name, patwari_phone)
        VALUES (?, ?, ?, ?, ?, ?)`
-    ).run(userId, district.id, tehsil.id, village.id, cleanName, cleanPhone);
+    ).run(userId, district.id, tehsil.id, targetVillageId, cleanName, cleanPhone);
 
-    logAudit(userId, 'PATWARI', 'PATWARI_REGISTERED', 'PATWARI', userId, `${cleanName} -> ${village.village_name}, ${tehsil.tehsil_name}`);
+    logAudit(
+      userId,
+      'PATWARI',
+      'PATWARI_REGISTERED',
+      'PATWARI',
+      userId,
+      `${cleanName} -> ${resolvedVillageName}, ${tehsil.tehsil_name}`
+    );
   });
 
   tx();
@@ -213,7 +260,7 @@ publicRoutes.post('/auth/register-patwari', (req, res) => {
     patwariName: cleanName,
     districtName: district.district_name,
     tehsilName: tehsil.tehsil_name,
-    villageName: village.village_name
+    villageName: resolvedVillageName
   });
 });
 
@@ -290,6 +337,80 @@ publicRoutes.post('/auth/logout', (req, res) => {
     secure: isHttps
   });
   res.json({ message: 'Logged out successfully.' });
+});
+
+publicRoutes.post('/auth/reset-password', (req, res) => {
+  const { loginType, userId, phone, newPassword, confirmPassword } = req.body || {};
+
+  if (!loginType || !userId?.trim() || !phone?.trim() || !newPassword || !confirmPassword) {
+    res.status(400).json({ error: 'All fields (Portal Type, User ID, Mobile Number, and New Password) are required.' });
+    return;
+  }
+
+  const requestedRole = String(loginType).toUpperCase() as UserRole;
+  if (requestedRole === 'ADMIN') {
+    res.status(403).json({ error: 'Administrator password cannot be reset via the public portal.' });
+    return;
+  }
+  if (!['COURT', 'PATWARI'].includes(requestedRole)) {
+    res.status(400).json({ error: 'Please select COURT or PATWARI account type.' });
+    return;
+  }
+
+  const cleanPhone = String(phone).trim().replace(/\s+/g, '');
+  if (!MOBILE_REGEX.test(cleanPhone)) {
+    res.status(400).json({ error: 'Please enter a valid 10-digit registered mobile number.' });
+    return;
+  }
+
+  if (String(newPassword).length < 6) {
+    res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    res.status(400).json({ error: 'New Password and Confirm Password do not match.' });
+    return;
+  }
+
+  const cleanUserId = String(userId).trim().toUpperCase();
+  const userRow = db
+    .prepare(`SELECT user_id, role, phone, status FROM users WHERE UPPER(user_id) = ?`)
+    .get(cleanUserId) as
+    | { user_id: string; role: UserRole; phone: string; status: string }
+    | undefined;
+
+  if (!userRow || userRow.role !== requestedRole || userRow.phone !== cleanPhone) {
+    res.status(400).json({
+      error: 'Verification failed: User ID and Registered Mobile Number do not match our records for the selected portal.'
+    });
+    return;
+  }
+
+  if (userRow.status !== 'ACTIVE') {
+    res.status(403).json({
+      error: 'This account is currently deactivated. Please contact the System Administrator.'
+    });
+    return;
+  }
+
+  const passwordHash = bcrypt.hashSync(String(newPassword), 10);
+  db.prepare(`UPDATE users SET password_hash = ? WHERE user_id = ?`).run(passwordHash, userRow.user_id);
+
+  logAudit(
+    userRow.user_id,
+    userRow.role,
+    'PASSWORD_RESET_SELF',
+    'USER',
+    userRow.user_id,
+    'Password reset via User ID and registered mobile verification'
+  );
+
+  res.json({
+    message: `Password reset successfully for ${userRow.user_id}. You can now login with your new password.`,
+    userId: userRow.user_id,
+    role: userRow.role
+  });
 });
 
 publicRoutes.get('/auth/me', requireAuth, (req, res) => {

@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import { db } from '../db';
 import { requireAuth, requireRole } from '../middleware/auth';
@@ -175,6 +176,37 @@ adminRoutes.patch('/users/:userId/status', (req, res) => {
 
   logAudit(req.authUser!.userId, 'ADMIN', 'USER_STATUS_UPDATED', 'USER', targetUserId, `Changed status to ${status}`);
   res.json({ message: `User ${targetUserId} is now ${status}.` });
+});
+
+adminRoutes.post('/users/:userId/reset-password', (req, res) => {
+  const targetUserId = String(req.params.userId);
+  const { newPassword } = req.body || {};
+
+  if (!newPassword || String(newPassword).length < 6) {
+    res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+    return;
+  }
+
+  const passwordHash = bcrypt.hashSync(String(newPassword), 10);
+  const info = db
+    .prepare(`UPDATE users SET password_hash = ? WHERE user_id = ?`)
+    .run(passwordHash, targetUserId);
+
+  if (info.changes === 0) {
+    res.status(404).json({ error: 'User not found.' });
+    return;
+  }
+
+  logAudit(
+    req.authUser!.userId,
+    'ADMIN',
+    'USER_PASSWORD_RESET_BY_ADMIN',
+    'USER',
+    targetUserId,
+    'Password reset by System Administrator'
+  );
+
+  res.json({ message: `Password reset successfully for ${targetUserId}.` });
 });
 
 adminRoutes.get('/master-data', (_req, res) => {

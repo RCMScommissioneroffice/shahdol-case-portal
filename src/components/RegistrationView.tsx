@@ -1,7 +1,7 @@
 import { ArrowLeft, Building2, CheckCircle2, MapPin, ShieldAlert } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../api';
-import type { DistrictItem, TehsilItem, VillageItem } from '../types';
+import type { DistrictItem, TehsilItem } from '../types';
 
 interface RegistrationViewProps {
   initialType?: 'COURT' | 'PATWARI' | null;
@@ -17,7 +17,6 @@ export function RegistrationView({
   const [regType, setRegType] = useState<'COURT' | 'PATWARI' | null>(initialType);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
   const [tehsils, setTehsils] = useState<TehsilItem[]>([]);
-  const [villages, setVillages] = useState<VillageItem[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(true);
 
   // Court fields
@@ -32,7 +31,7 @@ export function RegistrationView({
   // Patwari fields
   const [pDistrictId, setPDistrictId] = useState('');
   const [pTehsilId, setPTehsilId] = useState('');
-  const [pVillageId, setPVillageId] = useState('');
+  const [pVillageName, setPVillageName] = useState('');
   const [patwariName, setPatwariName] = useState('');
   const [patwariPhone, setPatwariPhone] = useState('');
   const [pPassword, setPPassword] = useState('');
@@ -48,11 +47,10 @@ export function RegistrationView({
 
   useEffect(() => {
     setLoadingLocations(true);
-    apiRequest<{ districts: DistrictItem[]; tehsils: TehsilItem[]; villages: VillageItem[] }>('/api/locations')
+    apiRequest<{ districts: DistrictItem[]; tehsils: TehsilItem[] }>('/api/locations')
       .then((data) => {
         setDistricts(data.districts);
         setTehsils(data.tehsils);
-        setVillages(data.villages);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoadingLocations(false));
@@ -60,9 +58,6 @@ export function RegistrationView({
 
   const courtTehsils = tehsils.filter((t) => String(t.district_id) === cDistrictId);
   const patwariTehsils = tehsils.filter((t) => String(t.district_id) === pDistrictId);
-  const patwariVillages = villages.filter(
-    (v) => String(v.district_id) === pDistrictId && String(v.tehsil_id) === pTehsilId
-  );
 
   async function handleCourtSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,7 +109,7 @@ export function RegistrationView({
         body: JSON.stringify({
           districtId: Number(pDistrictId),
           tehsilId: Number(pTehsilId),
-          villageId: Number(pVillageId),
+          villageName: pVillageName.trim(),
           patwariName,
           patwariPhone,
           password: pPassword,
@@ -415,7 +410,7 @@ export function RegistrationView({
                         onChange={(e) => {
                           setPDistrictId(e.target.value);
                           setPTehsilId('');
-                          setPVillageId('');
+                          setPVillageName('');
                         }}
                         className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[#0F2942] focus:outline-none"
                       >
@@ -438,7 +433,7 @@ export function RegistrationView({
                         value={pTehsilId}
                         onChange={(e) => {
                           setPTehsilId(e.target.value);
-                          setPVillageId('');
+                          setPVillageName('');
                         }}
                         className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 disabled:bg-slate-100 focus:border-[#0F2942] focus:outline-none"
                       >
@@ -453,22 +448,17 @@ export function RegistrationView({
 
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                        Village (ग्राम / हल्का) *
+                        Village / Halka (ग्राम / हल्का) *
                       </label>
-                      <select
+                      <input
+                        type="text"
                         required
                         disabled={!pTehsilId}
-                        value={pVillageId}
-                        onChange={(e) => setPVillageId(e.target.value)}
+                        placeholder={pTehsilId ? 'Enter Village name' : 'Select Tehsil first'}
+                        value={pVillageName}
+                        onChange={(e) => setPVillageName(e.target.value)}
                         className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 disabled:bg-slate-100 focus:border-[#0F2942] focus:outline-none"
-                      >
-                        <option value="">-- Village --</option>
-                        {patwariVillages.map((v) => (
-                          <option key={v.id} value={v.id} disabled={Boolean(v.has_patwari)}>
-                            {v.village_name} {v.has_patwari ? `(Assigned: ${v.mapped_patwari_name})` : '(Available)'}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   </div>
 
